@@ -13,7 +13,7 @@ import (
 //sys findNextStream(findStream windows.Handle, findStreamData unsafe.Pointer) (err error) = kernel32.FindNextStreamW
 //sys findClose(findFile windows.Handle) (err error) = kernel32.FindClose
 
-func FindFirstStream(fileName string, infoLevel int32, flags uint32) (data WIN32_FIND_STREAM_DATA, err error) {
+func FindFirstStream(fileName string, infoLevel int32, flags uint32) (hnd windows.Handle, data WIN32_FIND_STREAM_DATA, err error) {
 	wStr, err := windows.UTF16PtrFromString(fileName)
 	if err != nil {
 		return
@@ -28,12 +28,16 @@ func FindFirstStream(fileName string, infoLevel int32, flags uint32) (data WIN32
 	// windows.ERROR_HANDLE_EOF if there is no stream
 	// windows.ERROR_INVALID_PARAMETER for unsupported file system
 
+	hnd = ret
+
 	return
 }
 
 
 func FindNextStream(findStream windows.Handle, findStreamData unsafe.Pointer) (data WIN32_FIND_STREAM_DATA, err error) {
 	err = findNextStream(findStream, unsafe.Pointer(&data))
+
+	// windows.ERROR_HANDLE_EOF if there is no more stream
 
 	return
 }
