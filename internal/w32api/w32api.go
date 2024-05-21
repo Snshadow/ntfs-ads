@@ -25,6 +25,7 @@ func FindFirstStream(fileName string, infoLevel int32, flags uint32) (hnd window
 		return
 	}
 
+	// returns
 	// windows.ERROR_HANDLE_EOF if there is no stream
 	// windows.ERROR_INVALID_PARAMETER for unsupported file system
 
@@ -34,10 +35,10 @@ func FindFirstStream(fileName string, infoLevel int32, flags uint32) (hnd window
 }
 
 
-func FindNextStream(findStream windows.Handle, findStreamData unsafe.Pointer) (data WIN32_FIND_STREAM_DATA, err error) {
+func FindNextStream(findStream windows.Handle) (data WIN32_FIND_STREAM_DATA, err error) {
 	err = findNextStream(findStream, unsafe.Pointer(&data))
 
-	// windows.ERROR_HANDLE_EOF if there is no more stream
+	// returns windows.ERROR_HANDLE_EOF if there is no more stream
 
 	return
 }
