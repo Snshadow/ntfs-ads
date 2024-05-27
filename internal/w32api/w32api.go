@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-//sys findFirstStream(fileName *uint16, infoLevel int32, findStreamData unsafe.Pointer, flags uint32) (hnd windows.Handle) = kernel32.FindFirstStreamW
+//sys findFirstStream(fileName *uint16, infoLevel int32, findStreamData unsafe.Pointer, flags uint32) (hnd windows.Handle, err error) [failretval==windows.InvalidHandle] = kernel32.FindFirstStreamW
 //sys findNextStream(findStream windows.Handle, findStreamData unsafe.Pointer) (err error) = kernel32.FindNextStreamW
 //sys findClose(findFile windows.Handle) (err error) = kernel32.FindClose
 
@@ -19,17 +19,11 @@ func FindFirstStream(fileName string, infoLevel int32, flags uint32) (hnd window
 		return
 	}
 
-	ret := findFirstStream(wStr, FindStreamInfoStandard, unsafe.Pointer(&data), flags) // flags should be 0
-	if ret == windows.InvalidHandle {
-		err = windows.GetLastError()
-		return
-	}
+	hnd, err = findFirstStream(wStr, FindStreamInfoStandard, unsafe.Pointer(&data), flags) // flags should be 0
 
-	// returns
+	// returned error
 	// windows.ERROR_HANDLE_EOF if there is no stream
 	// windows.ERROR_INVALID_PARAMETER for unsupported file system
-
-	hnd = ret
 
 	return
 }

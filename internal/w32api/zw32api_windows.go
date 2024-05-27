@@ -53,9 +53,12 @@ func findClose(findFile windows.Handle) (err error) {
 	return
 }
 
-func findFirstStream(fileName *uint16, infoLevel int32, findStreamData unsafe.Pointer, flags uint32) (hnd windows.Handle) {
-	r0, _, _ := syscall.Syscall6(procFindFirstStreamW.Addr(), 4, uintptr(unsafe.Pointer(fileName)), uintptr(infoLevel), uintptr(findStreamData), uintptr(flags), 0, 0)
+func findFirstStream(fileName *uint16, infoLevel int32, findStreamData unsafe.Pointer, flags uint32) (hnd windows.Handle, err error) {
+	r0, _, e1 := syscall.Syscall6(procFindFirstStreamW.Addr(), 4, uintptr(unsafe.Pointer(fileName)), uintptr(infoLevel), uintptr(findStreamData), uintptr(flags), 0, 0)
 	hnd = windows.Handle(r0)
+	if hnd == windows.InvalidHandle {
+		err = errnoErr(e1)
+	}
 	return
 }
 
