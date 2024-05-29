@@ -13,6 +13,21 @@ import (
 	ntfs_ads "github.com/Snshadow/ntfs-ads"
 )
 
+var (
+	getNameSizePad = func(m map[string]int64) (name int, size int) {
+		for k, v := range m {
+			if l := len(k); l > name {
+				name = l
+			}
+			if l := len(fmt.Sprintf("%d", v)); l > size {
+				size = l
+			}
+		}
+
+		return
+	}
+)
+
 func main() {
 	var flagStdout bool
 	var flagFileName, flagTargetAds, flagOutFileName string
@@ -38,22 +53,24 @@ func main() {
 	}
 
 	if flagTargetAds == "" {
-		// query all ADS name(s)
+		// query all ADS name(s) and size(s)
 		strmMap, err := ntfs_ads.GetFileADS(flagFileName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not query ADS from file \"%s\": %v\n", flagFileName, err)
 		}
 
-		fmt.Printf("ADS of %s(name : byte size):\n", flagFileName)
+		namePad, sizePad := getNameSizePad(strmMap)
+
+		fmt.Printf("ADS of %s:\n(name : byte size)\n", flagFileName)
 		for name, size := range strmMap {
-			fmt.Printf("\t%s: %d\n", name, size)
+			fmt.Printf("%*s : %*d\n", namePad, name, sizePad, size)
 		}
 	} else {
 		var err error
 
 		strmHnd, sErr := ntfs_ads.OpenFileADS(flagFileName, flagTargetAds)
 		if sErr != nil {
-			fmt.Fprintf(os.Stderr, "Could not open descriptor of \"%s\" from file \"%s\": %v\n", flagTargetAds, flagFileName, sErr)
+			fmt.Fprintf(os.Stderr, "Could not open ADS with name \"%s\" from file \"%s\": %v\n", flagTargetAds, flagFileName, sErr)
 			os.Exit(2)
 		}
 		defer strmHnd.Close()
@@ -63,25 +80,36 @@ func main() {
 		rdBuf := make([]byte, 4096)
 
 		var outFileName string
-		if flagOutFileName == "" {
-			outFileName = flagTargetAds
-		} else {
-			outFileName = flagOutFileName
+		if !flagStdout {
+			if flagOutFileName == "" {
+				outFileName = flagTargetAds
+			} else {
+				outFileName = flagOutFileName
+			}
 		}
 
 		var wrOffset int64
-		outFile, sErr := os.Create(outFileName)
-		if sErr != nil {
-			err = fmt.Errorf("Could not prepare file for writing ADS data: %v", sErr)
+		var outFile *os.File
 
-			goto EXIT
+		if outFileName != "" {
+			var sErr error
+			outFile, sErr = os.Create(outFileName)
+			if sErr != nil {
+				err = fmt.Errorf("could not prepare file for writing ADS data: %v", sErr)
+
+				goto EXIT
+			}
 		}
-		defer outFile.Close()
+		defer func() {
+			if outFile != nil {
+				outFile.Close()
+			}
+		}()
 
 		for {
 			n, rdErr := bw.Read(rdBuf)
-			if rdErr != nil && rdErr != io.EOF {
-				if err != io.EOF {
+			if rdErr != nil {
+				if rdErr != io.EOF {
 					err = fmt.Errorf("read error: %v", rdErr)
 				}
 				break
@@ -102,9 +130,13 @@ func main() {
 			}
 		}
 
+		if outFileName != "" && err == nil {
+			fmt.Printf("Wrote ADS data into file \"%s\"\n", outFileName)
+		}
+
 	EXIT:
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while writing from ADS: %v", err)
+			fmt.Fprintf(os.Stderr, "Error while writing data from ADS: %v", err)
 			os.Exit(2)
 		}
 	}
