@@ -81,9 +81,9 @@ func main() {
 		for {
 			n, rdErr := bw.Read(rdBuf)
 			if rdErr != nil && rdErr != io.EOF {
-				err = fmt.Errorf("read error: %v", rdErr)
-				break
-			} else if rdErr == io.EOF {
+				if err != io.EOF {
+					err = fmt.Errorf("read error: %v", rdErr)
+				}
 				break
 			}
 
