@@ -10,7 +10,7 @@ import (
 	"io"
 	"os"
 
-	ntfs_ads "github.com/Snshadow/ntfs-ads"
+	"github.com/Snshadow/ntfs-ads"
 )
 
 var (
@@ -57,6 +57,8 @@ func main() {
 		strmMap, err := ntfs_ads.GetFileADS(flagFileName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not query ADS from file \"%s\": %v\n", flagFileName, err)
+
+			return
 		}
 
 		namePad, sizePad := getNameSizePad(strmMap)
@@ -68,12 +70,11 @@ func main() {
 	} else {
 		var err error
 
-		strmHnd, sErr := ntfs_ads.OpenFileADS(flagFileName, flagTargetAds)
+		strmHnd, sErr := ntfs_ads.OpenFileADS(flagFileName, flagTargetAds, os.O_RDONLY)
 		if sErr != nil {
 			fmt.Fprintf(os.Stderr, "Could not open ADS with name \"%s\" from file \"%s\": %v\n", flagTargetAds, flagFileName, sErr)
 			os.Exit(2)
 		}
-		defer strmHnd.Close()
 
 		// use buffered io in case of large sized data stored in ADS
 		bw := bufio.NewReader(strmHnd)
@@ -100,11 +101,6 @@ func main() {
 				goto EXIT
 			}
 		}
-		defer func() {
-			if outFile != nil {
-				outFile.Close()
-			}
-		}()
 
 		for {
 			n, rdErr := bw.Read(rdBuf)
@@ -135,8 +131,13 @@ func main() {
 		}
 
 	EXIT:
+		if outFile != nil {
+			outFile.Close()
+		}
+		strmHnd.Close()
+
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error while writing data from ADS: %v", err)
+			fmt.Fprintf(os.Stderr, "Error while reading data from ADS: %v", err)
 			os.Exit(2)
 		}
 	}
