@@ -20,12 +20,12 @@ func main() {
 	flag.BoolVar(&flagStdin, "stdin", false, "read data from standard input")
 	flag.BoolVar(&flagAppend, "append", false, "append data into specified stream")
 
-	flag.StringVar(&flagSourceFile, "source-file", "", "source file for data being written")
+	flag.StringVar(&flagSourceFile, "source-file", "", "source file of data being written")
 	flag.StringVar(&flagTargetFile, "target-file", "", "target path for writing ADS")
 	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data into")
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "")
+		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS. Can read data from file or stdin.\nUsage:\nWrite data from file: %s [source file] [target file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 
 		flag.PrintDefaults()
 	}

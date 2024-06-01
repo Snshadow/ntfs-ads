@@ -39,7 +39,7 @@ func main() {
 	flag.StringVar(&flagOutFileName, "out-file", "", "name of a file to output ADS data, default to ADS name")
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout: %s -filename [filename] -ads-name [ADS name] -stdout > [outfile]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout: %s -filename [filename] -ads-name [ADS name] -stdout > [outfile]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 		flag.PrintDefaults()
 	}
 
