@@ -1,3 +1,5 @@
+//go:generate go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo write_ads.json
+
 //go:build windows
 // +build windows
 
@@ -14,18 +16,19 @@ import (
 )
 
 func main() {
-	var flagStdin, flagAppend bool
+	var flagStdin, flagAppend, flagRemove bool
 	var flagSourceFile, flagTargetFile, flagADSName string
 
 	flag.BoolVar(&flagStdin, "stdin", false, "read data from standard input")
 	flag.BoolVar(&flagAppend, "append", false, "append data into specified stream")
+	flag.BoolVar(&flagRemove, "remove", false, "remove specified ADS")
 
 	flag.StringVar(&flagSourceFile, "source-file", "", "source file of data being written")
 	flag.StringVar(&flagTargetFile, "target-file", "", "target path for writing ADS")
-	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data into")
+	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data or remove")
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS. Can read data from file or stdin.\nUsage:\nWrite data from file: %s [source file] [target file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [source file] [target file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 
 		flag.PrintDefaults()
 	}
@@ -43,7 +46,7 @@ func main() {
 
 	if flagStdin {
 		src = os.Stdin
-	} else {
+	} else if !flagRemove {
 		if flagSourceFile == "" {
 			if flagSourceFile = flag.Arg(1); flagSourceFile == "" {
 				flag.Usage()
@@ -60,7 +63,7 @@ func main() {
 	}
 
 	if flagADSName == "" {
-		if flagStdin {
+		if flagStdin || flagRemove {
 			flagADSName = flag.Arg(1)
 		} else {
 			flagADSName = flag.Arg(2)
@@ -69,6 +72,17 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
+	}
+
+	if flagRemove {
+		err := os.Remove(flagTargetFile + ":" + flagADSName)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not remove ADS from \"%s\" with name \"%s\": %v\n", flagTargetFile, flagADSName, err)
+			os.Exit(2)
+		}
+		fmt.Printf("Removed ADS \"%s\" from file \"%s\"\n", flagADSName, flagTargetFile)
+
+		return
 	}
 
 	openFlag := os.O_WRONLY
@@ -87,8 +101,6 @@ func main() {
 	rd := bufio.NewReader(src)
 	rdBuf := make([]byte, 4096)
 
-	var wrOffset int64
-
 	for {
 		n, rdErr := rd.Read(rdBuf)
 		if rdErr != nil {
@@ -102,20 +114,12 @@ func main() {
 			rdBuf = rdBuf[:n]
 		}
 
-		if flagAppend {
-			_, sErr := strmHnd.Write(rdBuf)
-			if sErr != nil {
-				err = fmt.Errorf("write error: %v", sErr)
-				goto EXIT
-			}
-		} else {
-			n, sErr := strmHnd.WriteAt(rdBuf, wrOffset)
-			if sErr != nil {
-				err = fmt.Errorf("write error: %v", sErr)
-				goto EXIT
-			}
-			wrOffset += int64(n)
+		_, sErr := strmHnd.Write(rdBuf)
+		if sErr != nil {
+			err = fmt.Errorf("write error: %v", sErr)
+			goto EXIT
 		}
+
 	}
 
 EXIT:

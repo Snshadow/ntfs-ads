@@ -37,7 +37,7 @@ func parseStreamDataName(data w32api.WIN32_FIND_STREAM_DATA) string {
 	return name
 }
 
-// OpenFileADS opens ADS stream of the name from the given file with specified flag(see os.OpenFile() for details), should be closed with (*os.File).Close() after use. 
+// OpenFileADS opens data stream of the name from the given file with specified flag(see os.OpenFile() for details), should be closed with (*os.File).Close() after use. 
 func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 	path = filepath.Clean(path)
 

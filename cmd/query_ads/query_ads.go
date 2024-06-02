@@ -1,3 +1,5 @@
+//go:generate go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo query_ads.json
+
 //go:build windows
 // +build windows
 
@@ -39,7 +41,7 @@ func main() {
 	flag.StringVar(&flagOutFileName, "out-file", "", "name of a file to output ADS data, default to ADS name")
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout: %s -filename [filename] -ads-name [ADS name] -stdout > [outfile]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 		flag.PrintDefaults()
 	}
 
@@ -89,7 +91,6 @@ func main() {
 			}
 		}
 
-		var wrOffset int64
 		var outFile *os.File
 
 		if outFileName != "" {
@@ -118,11 +119,10 @@ func main() {
 			if flagStdout {
 				os.Stdout.Write(rdBuf)
 			} else {
-				n, wrErr := outFile.WriteAt(rdBuf, wrOffset)
+				_, wrErr := outFile.Write(rdBuf)
 				if wrErr != nil {
 					goto EXIT
 				}
-				wrOffset += int64(n)
 			}
 		}
 
