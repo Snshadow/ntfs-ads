@@ -28,7 +28,7 @@ func main() {
 	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data or remove")
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [source file] [target file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
 
 		flag.PrintDefaults()
 	}
@@ -105,7 +105,7 @@ func main() {
 		n, rdErr := rd.Read(rdBuf)
 		if rdErr != nil {
 			if rdErr != io.EOF {
-				err = fmt.Errorf("failed to read data from file: %v", err)
+				err = fmt.Errorf("failed to read data from file: %v", rdErr)
 			}
 			break
 		}

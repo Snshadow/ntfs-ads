@@ -55,7 +55,7 @@ Write ADS content to stdout(for piping output): query-ads.exe -filename [filenam
 ```
 write-ads.exe writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.
 Usage:
-Write data from file: write-ads.exe [source file] [target file] [ADS name] or write-ads.exe -source-file [source-file] -target-file [target file] -ads-name [ADS name]
+Write data from file: write-ads.exe [target file] [source file] [ADS name] or write-ads.exe -source-file [source-file] -target-file [target file] -ads-name [ADS name]
 Write data from stdin: echo "[data]" | write-ads.exe --stdin [target file] [ADS name]
 Remove ADS from file: write-ads.exe -remove -target-file [target file] -ads-name [ADS name]
 
