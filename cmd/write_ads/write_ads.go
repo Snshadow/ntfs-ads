@@ -6,11 +6,11 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/Snshadow/ntfs-ads"
 )
@@ -26,9 +26,11 @@ func main() {
 	flag.StringVar(&flagSourceFile, "source-file", "", "source file of data being written")
 	flag.StringVar(&flagTargetFile, "target-file", "", "target path for writing ADS")
 	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data or remove")
+	
+	progName := filepath.Base(os.Args[0])
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", progName, progName, progName, progName, progName)
 
 		flag.PrintDefaults()
 	}
@@ -42,7 +44,7 @@ func main() {
 		}
 	}
 
-	var src io.Reader
+	var src *os.File
 
 	if flagStdin {
 		src = os.Stdin
@@ -98,11 +100,10 @@ func main() {
 		os.Exit(2)
 	}
 
-	rd := bufio.NewReader(src)
 	rdBuf := make([]byte, 4096)
 
 	for {
-		n, rdErr := rd.Read(rdBuf)
+		n, rdErr := src.Read(rdBuf)
 		if rdErr != nil {
 			if rdErr != io.EOF {
 				err = fmt.Errorf("failed to read data from file: %v", rdErr)

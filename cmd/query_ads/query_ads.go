@@ -6,11 +6,11 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/Snshadow/ntfs-ads"
 )
@@ -40,8 +40,10 @@ func main() {
 	flag.StringVar(&flagTargetAds, "ads-name", "", "name of a ADS to read data")
 	flag.StringVar(&flagOutFileName, "out-file", "", "name of a file to output ADS data, default to ADS name")
 
+	progName := filepath.Base(os.Args[0])
+
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n\n", os.Args[0], os.Args[0], os.Args[0], os.Args[0])
+		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n\n", progName, progName, progName, progName)
 		flag.PrintDefaults()
 	}
 
@@ -79,7 +81,6 @@ func main() {
 		}
 
 		// use buffered io in case of large sized data stored in ADS
-		bw := bufio.NewReader(strmHnd)
 		rdBuf := make([]byte, 4096)
 
 		var outFileName string
@@ -104,7 +105,7 @@ func main() {
 		}
 
 		for {
-			n, rdErr := bw.Read(rdBuf)
+			n, rdErr := strmHnd.Read(rdBuf)
 			if rdErr != nil {
 				if rdErr != io.EOF {
 					err = fmt.Errorf("read error: %v", rdErr)
