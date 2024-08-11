@@ -11,8 +11,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 
 	"github.com/Snshadow/ntfs-ads"
+	"github.com/Snshadow/ntfs-ads/cmd/utils"
 )
 
 var (
@@ -21,7 +23,7 @@ var (
 			if l := len(k); l > name {
 				name = l
 			}
-			if l := len(fmt.Sprintf("%d", v)); l > size {
+			if l := len(strconv.FormatInt(v, 10)); l > size {
 				size = l
 			}
 		}
@@ -43,8 +45,14 @@ func main() {
 	progName := filepath.Base(os.Args[0])
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n\n", progName, progName, progName, progName)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file, reads and writes its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n\n", progName, progName, progName, progName)
 		flag.PrintDefaults()
+
+		// prevent window from closing immediately if the console was created for this process
+		if utils.IsFromOwnConsole() {
+			fmt.Println("\nPress enter to close...")
+			fmt.Scanln()
+		}
 	}
 
 	flag.Parse()

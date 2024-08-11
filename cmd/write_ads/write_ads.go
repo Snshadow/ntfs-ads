@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 
 	"github.com/Snshadow/ntfs-ads"
+	"github.com/Snshadow/ntfs-ads/cmd/utils"
 )
 
 func main() {
@@ -33,6 +34,12 @@ func main() {
 		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", progName, progName, progName, progName, progName)
 
 		flag.PrintDefaults()
+
+		// prevent window from closing immediately if the console was created for this process
+		if utils.IsFromOwnConsole() {
+			fmt.Println("\nPress enter to close...")
+			fmt.Scanln()
+		}
 	}
 
 	flag.Parse()
