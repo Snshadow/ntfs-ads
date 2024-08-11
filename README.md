@@ -36,7 +36,7 @@ This package has two executables for accessing ADS from file. Binary files can b
 _P.S.: Microsoft Defender has a tendency to flag golang compiled exe as trojan malware, but it's a false positive. If you are concerned, you can look at the source file in the cmd directory and build it yourself._
 
 ```
-query-ads.exe queries ADS(Alternate Data Stream) from the named file. Read and write its content if requested.
+query-ads.exe queries ADS(Alternate Data Stream) from the named file, reads and writes its content if requested.
 Usage:
 Query all ADS name from file: query-ads.exe [filename]
 Write ADS content to file: query-ads.exe -filename [file name] -ads-name [ADS name] -out-file [outfile name]      
