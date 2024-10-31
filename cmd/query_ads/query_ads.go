@@ -45,7 +45,7 @@ func main() {
 	progName := filepath.Base(os.Args[0])
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file, reads and writes its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [file name] -ads-name [ADS name] -out-file [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n\n", progName, progName, progName, progName)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s queries ADS(Alternate Data Stream) from the named file, reads and writes its content if requested.\nUsage:\nQuery all ADS name from file: %s [filename]\nWrite ADS content to file: %s -filename [filename] -ads-name [ADS name] -out-file [outfile name]\n or\n %s [filename] [ADS name] [outfile name]\nWrite ADS content to stdout(for piping output): %s -filename [filename] -ads-name [ADS name] -stdout | (process output)\n or\n %s -stdout [filename] [ADS name] | (process output)\n\n", progName, progName, progName, progName, progName, progName)
 		flag.PrintDefaults()
 
 		// prevent window from closing immediately if the console was created for this process
@@ -62,6 +62,12 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
+	}
+	if flagTargetAds == "" {
+		flagTargetAds = flag.Arg(1)
+	}
+	if flagOutFileName == "" && !flagStdout {
+		flagOutFileName = flag.Arg(2)
 	}
 
 	if flagTargetAds == "" {
@@ -88,7 +94,7 @@ func main() {
 			os.Exit(2)
 		}
 
-		// use buffered io in case of large sized data stored in ADS
+		// use buffer in case of handling large sized data stored in ADS
 		rdBuf := make([]byte, 4096)
 
 		var outFileName string

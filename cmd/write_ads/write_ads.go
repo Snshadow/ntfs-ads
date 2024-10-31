@@ -27,11 +27,11 @@ func main() {
 	flag.StringVar(&flagSourceFile, "source-file", "", "source file of data being written")
 	flag.StringVar(&flagTargetFile, "target-file", "", "target path for writing ADS")
 	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data or remove")
-	
+
 	progName := filepath.Base(os.Args[0])
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name] or %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", progName, progName, progName, progName, progName)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or standard input.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name]\n or\n %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", progName, progName, progName, progName, progName)
 
 		flag.PrintDefaults()
 
