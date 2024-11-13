@@ -2,7 +2,7 @@ module github.com/Snshadow/ntfs-ads
 
 go 1.20
 
-require golang.org/x/sys v0.20.0
+require golang.org/x/sys v0.27.0
 
 require (
 	github.com/akavel/rsrc v0.10.2 // indirect
