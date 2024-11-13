@@ -137,6 +137,10 @@ EXIT:
 		fmt.Fprintf(os.Stderr, "Error while writing data into ADS: %v\n", err)
 		os.Exit(2)
 	} else {
-		fmt.Printf("Wrote data into ADS \"%s:%s\"\n", flagTargetFile, flagADSName)
+		if flagAppend {
+			fmt.Printf("Appended data into ADS \"%s:%s\"\n", flagTargetFile, flagADSName)
+		} else {
+			fmt.Printf("Wrote data into ADS \"%s:%s\"\n", flagTargetFile, flagADSName)
+		}
 	}
 }

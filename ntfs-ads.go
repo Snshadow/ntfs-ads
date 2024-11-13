@@ -37,22 +37,69 @@ func parseStreamDataName(data w32api.WIN32_FIND_STREAM_DATA) string {
 	return name
 }
 
-// OpenFileADS opens data stream of the name from the given file with specified flag(see os.OpenFile() for details), should be closed with (*os.File).Close() after use. 
+// OpenFileADS opens data stream of the name from the given file with specified flag(see os.OpenFile() for details), should be closed with (*os.File).Close() after use.
 func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
-	path = filepath.Clean(path)
+	path = path + ":" + name
 
-	path += (":" + name)
+	u16Path, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
 
-	return os.OpenFile(path, openFlag, 0644)
+	var access, mode, createmode uint32
+
+	switch openFlag & (os.O_RDONLY | os.O_WRONLY | os.O_RDWR) {
+	case os.O_RDONLY:
+		access = windows.FILE_READ_DATA | windows.SYNCHRONIZE
+		mode = windows.FILE_SHARE_READ
+		createmode = windows.OPEN_EXISTING
+	case os.O_WRONLY:
+		access = windows.FILE_WRITE_DATA | windows.SYNCHRONIZE
+		mode = windows.FILE_SHARE_WRITE
+		createmode = windows.CREATE_ALWAYS
+	case os.O_RDWR:
+		access = windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE
+		mode = windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE
+		createmode = windows.CREATE_ALWAYS
+	}
+
+	if openFlag&os.O_APPEND != 0 {
+		access &^= windows.FILE_WRITE_DATA
+		access |= windows.FILE_APPEND_DATA
+		createmode = windows.OPEN_EXISTING
+	}
+
+	hnd, err := windows.CreateFile(
+		u16Path,
+		access,
+		mode,
+		nil,
+		createmode,
+		windows.FILE_FLAG_BACKUP_SEMANTICS|windows.FILE_FLAG_OPEN_REPARSE_POINT,
+		0,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return os.NewFile(uintptr(hnd), path), nil
 }
 
 // GetFileADS finds names of alternate data streams from the named file.
 func GetFileADS(path string) (map[string]int64, error) {
 	streamInfoMap := make(map[string]int64)
 
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return nil, err
+	var err error
+	var absPath string
+
+	if strings.HasPrefix(path, "\\??\\") {
+		// has NT Namespace prefix
+		absPath = path
+	} else {
+		absPath, err = filepath.Abs(path)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	findStrm, data, err := w32api.FindFirstStream(absPath, w32api.FindStreamInfoStandard, 0)
