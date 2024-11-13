@@ -52,21 +52,30 @@ func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 	case os.O_RDONLY:
 		access = windows.FILE_READ_DATA | windows.SYNCHRONIZE
 		mode = windows.FILE_SHARE_READ
-		createmode = windows.OPEN_EXISTING
 	case os.O_WRONLY:
 		access = windows.FILE_WRITE_DATA | windows.SYNCHRONIZE
 		mode = windows.FILE_SHARE_WRITE
-		createmode = windows.CREATE_ALWAYS
 	case os.O_RDWR:
 		access = windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE
 		mode = windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE
+	}
+
+	switch openFlag & (os.O_CREATE | os.O_TRUNC | os.O_EXCL) {
+	case os.O_CREATE | os.O_EXCL:
+		createmode = windows.CREATE_NEW
+	case os.O_CREATE | os.O_TRUNC:
 		createmode = windows.CREATE_ALWAYS
+	case os.O_CREATE:
+		createmode = windows.OPEN_ALWAYS
+	case os.O_TRUNC:
+		createmode = windows.TRUNCATE_EXISTING
+	default:
+		createmode = windows.OPEN_EXISTING
 	}
 
 	if openFlag&os.O_APPEND != 0 {
 		access &^= windows.FILE_WRITE_DATA
 		access |= windows.FILE_APPEND_DATA
-		createmode = windows.OPEN_EXISTING
 	}
 
 	hnd, err := windows.CreateFile(
