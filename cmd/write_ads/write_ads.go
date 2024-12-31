@@ -106,33 +106,9 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Could not open ADS for writing: %v\n", err)
 		os.Exit(2)
 	}
+	defer strmHnd.Close()
 
-	rdBuf := make([]byte, 4096)
-
-	for {
-		n, rdErr := src.Read(rdBuf)
-		if rdErr != nil {
-			if rdErr != io.EOF {
-				err = fmt.Errorf("failed to read data from file: %v", rdErr)
-			}
-			break
-		}
-
-		if n < len(rdBuf) {
-			rdBuf = rdBuf[:n]
-		}
-
-		_, sErr := strmHnd.Write(rdBuf)
-		if sErr != nil {
-			err = fmt.Errorf("write error: %v", sErr)
-			goto EXIT
-		}
-
-	}
-
-EXIT:
-	strmHnd.Close()
-
+	_, err = io.Copy(strmHnd, src)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error while writing data into ADS: %v\n", err)
 		os.Exit(2)

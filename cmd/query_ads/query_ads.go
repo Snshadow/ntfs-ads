@@ -72,17 +72,17 @@ func main() {
 
 	if flagTargetAds == "" {
 		// query all ADS name(s) and size(s)
-		strmMap, err := ntfs_ads.GetFileADS(flagFileName)
+		ads, err := ntfs_ads.GetFileADS(flagFileName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Could not query ADS from file \"%s\": %v\n", flagFileName, err)
 
 			return
 		}
 
-		namePad, sizePad := getNameSizePad(strmMap)
+		namePad, sizePad := getNameSizePad(ads.StreamInfoMap)
 
 		fmt.Printf("ADS of %s:\n(name : byte size)\n", flagFileName)
-		for name, size := range strmMap {
+		for name, size := range ads.StreamInfoMap {
 			fmt.Printf("%*s : %*d\n", namePad, name, sizePad, size)
 		}
 	} else {
@@ -93,9 +93,7 @@ func main() {
 			fmt.Fprintf(os.Stderr, "Could not open ADS with name \"%s\" from file \"%s\": %v\n", flagTargetAds, flagFileName, sErr)
 			os.Exit(2)
 		}
-
-		// use buffer in case of handling large sized data stored in ADS
-		rdBuf := make([]byte, 4096)
+		defer strmHnd.Close()
 
 		var outFileName string
 		if !flagStdout {
@@ -112,48 +110,22 @@ func main() {
 			var sErr error
 			outFile, sErr = os.Create(outFileName)
 			if sErr != nil {
-				err = fmt.Errorf("could not prepare file for writing ADS data: %v", sErr)
-
-				goto EXIT
+				fmt.Fprintf(os.Stderr, "could not prepare file for writing ADS data: %v", sErr)
+				os.Exit(2)
 			}
+			defer outFile.Close()
+		} else if flagStdout {
+			outFile = os.Stdout
 		}
 
-		for {
-			n, rdErr := strmHnd.Read(rdBuf)
-			if rdErr != nil {
-				if rdErr != io.EOF {
-					err = fmt.Errorf("read error: %v", rdErr)
-				}
-				break
-			}
-
-			if n < len(rdBuf) {
-				rdBuf = rdBuf[:n]
-			}
-
-			if flagStdout {
-				os.Stdout.Write(rdBuf)
-			} else {
-				_, wrErr := outFile.Write(rdBuf)
-				if wrErr != nil {
-					goto EXIT
-				}
-			}
-		}
-
-		if outFileName != "" && err == nil {
-			fmt.Printf("Wrote ADS data into file \"%s\"\n", outFileName)
-		}
-
-	EXIT:
-		if outFile != nil {
-			outFile.Close()
-		}
-		strmHnd.Close()
-
+		_, err = io.Copy(outFile, strmHnd)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error while reading data from ADS: %v", err)
 			os.Exit(2)
+		}
+
+		if outFileName != "" {
+			fmt.Printf("Wrote ADS data into file \"%s\"\n", outFileName)
 		}
 	}
 }

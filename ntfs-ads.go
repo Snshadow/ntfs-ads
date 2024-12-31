@@ -9,10 +9,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"golang.org/x/sys/windows"
 
 	"github.com/Snshadow/ntfs-ads/internal/w32api"
+)
+
+const (
+	adsRename = 0x100000 // rename ADS, should be used alone for OpenFileADS
 )
 
 var (
@@ -37,7 +42,8 @@ func parseStreamDataName(data w32api.WIN32_FIND_STREAM_DATA) string {
 	return name
 }
 
-// OpenFileADS opens data stream of the name from the given file with specified flag(see os.OpenFile() for details), should be closed with (*os.File).Close() after use.
+// OpenFileADS opens data stream of the name from the given file with specified flag(used in os.OpenFile()),
+// should be closed with (*os.File).Close() after use.
 func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 	path = path + ":" + name
 
@@ -48,7 +54,7 @@ func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 
 	var access, mode, createmode uint32
 
-	switch openFlag & (os.O_RDONLY | os.O_WRONLY | os.O_RDWR) {
+	switch openFlag & (os.O_RDONLY | os.O_WRONLY | os.O_RDWR | adsRename) {
 	case os.O_RDONLY:
 		access = windows.FILE_READ_DATA | windows.SYNCHRONIZE
 		mode = windows.FILE_SHARE_READ
@@ -58,6 +64,8 @@ func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 	case os.O_RDWR:
 		access = windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE
 		mode = windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE
+	case adsRename:
+		access = windows.DELETE
 	}
 
 	switch openFlag & (os.O_CREATE | os.O_TRUNC | os.O_EXCL) {
@@ -94,12 +102,19 @@ func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 	return os.NewFile(uintptr(hnd), path), nil
 }
 
-// GetFileADS finds names of alternate data streams from the named file.
-func GetFileADS(path string) (map[string]int64, error) {
-	streamInfoMap := make(map[string]int64)
+// FileADS handles alternate data streams of a file.
+type FileADS struct {
+	Path          string
+	StreamInfoMap map[string]int64
 
+	mut *sync.Mutex // mutex for concurrent map handling
+}
+
+// GetFileADS returns ADS handler with a map of alternate data streams
+// from the specified file.
+func GetFileADS(path string) (FileADS, error) {
 	var err error
-	var absPath string
+	var absPath string // normalized path
 
 	if strings.HasPrefix(path, "\\??\\") {
 		// has NT Namespace prefix
@@ -107,18 +122,38 @@ func GetFileADS(path string) (map[string]int64, error) {
 	} else {
 		absPath, err = filepath.Abs(path)
 		if err != nil {
-			return nil, err
+			return FileADS{}, err
 		}
 	}
 
-	findStrm, data, err := w32api.FindFirstStream(absPath, w32api.FindStreamInfoStandard, 0)
-	if err == windows.ERROR_HANDLE_EOF {
-		return nil, ErrNoADS
-	} else if err == windows.ERROR_INVALID_PARAMETER {
-		return nil, ErrUnsupported
-	} else if err != nil {
-		return nil, err
+	ads := FileADS{
+		Path: absPath,
+		mut: &sync.Mutex{},
 	}
+
+	if err = ads.CollectADS(); err != nil {
+		return ads, err
+	}
+
+	return ads, err
+}
+
+// CollectADS collects name and size of alternate data streams of the file.
+func (a *FileADS) CollectADS() error {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	findStrm, data, err := w32api.FindFirstStream(a.Path, w32api.FindStreamInfoStandard, 0)
+	if err == windows.ERROR_HANDLE_EOF {
+		// possible for directories or reparse points, files have at least one for unnamed data stream
+		return ErrNoADS
+	} else if err == windows.ERROR_INVALID_PARAMETER {
+		return ErrUnsupported
+	} else if err != nil {
+		return err
+	}
+
+	streamInfoMap := make(map[string]int64)
 
 	if strmName := parseStreamDataName(data); strmName != "" {
 		streamInfoMap[strmName] = data.StreamSize
@@ -142,8 +177,99 @@ func GetFileADS(path string) (map[string]int64, error) {
 EXIT:
 	closeErr := w32api.FindClose(findStrm)
 	if closeErr != nil {
-		return streamInfoMap, fmt.Errorf("error: %v, FindClose err: %v", err, closeErr)
+		return fmt.Errorf("error: %v, FindClose err: %v", err, closeErr)
 	}
 
-	return streamInfoMap, err
+	a.StreamInfoMap = streamInfoMap
+
+	if len(a.StreamInfoMap) == 0 {
+		// return ErrNoADS for files
+		return ErrNoADS
+	}
+
+	return nil
+}
+
+// RenameADS renames alternate data stream with oldName to newName.
+// If stream with newName exists, it will be overwitten if overwrite is true,
+// otherwise return an error.
+func (a *FileADS) RenameADS(oldName, newName string, overwrite bool) error {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	size, ok := a.StreamInfoMap[oldName]
+	if !ok {
+		return fmt.Errorf("stream \"%s\" does not exist", oldName)
+	}
+
+	hnd, err := OpenFileADS(a.Path, oldName, adsRename)
+	if err != nil {
+		return err
+	}
+	defer hnd.Close()
+
+	// https://learn.microsoft.com/en-us/windows/win32/api/winbase/ns-winbase-file_rename_info#:~:text=The%20new%20name%20of%20an%20NTFS%20file%20stream%2C%20starting%20with%20%3A
+	renameInfo, err := w32api.NewFileRenameInfo(":" + newName, overwrite)
+	if err != nil {
+		return err
+	}
+
+	if err = windows.SetFileInformationByHandle(
+		windows.Handle(hnd.Fd()),
+		windows.FileRenameInfo,
+		&renameInfo[0],
+		uint32(len(renameInfo)),
+	); err != nil {
+		return err
+	}
+
+	delete(a.StreamInfoMap, oldName)
+	a.StreamInfoMap[newName] = size
+
+	return nil
+}
+
+// RemoveADS removes alternate data stream with the name.
+func (a *FileADS) RemoveADS(name string) error {
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	_, ok := a.StreamInfoMap[name]
+	if !ok {
+		return fmt.Errorf("stream \"%s\" does not exist", name)
+	}
+
+	if err := os.Remove(a.Path + ":" + name); err != nil {
+		return err
+	}
+
+	delete(a.StreamInfoMap, name)
+
+	return nil
+}
+
+// RemoveAllADS removes all alternate data streams from the file, leaving
+// only the unnamed data stream, in which data are normally stored.
+func (a *FileADS) RemoveAllADS() error {
+	var err error
+
+	// collect current ADS
+	err = a.CollectADS()
+	if err != nil {
+		return err
+	}
+
+	a.mut.Lock()
+	defer a.mut.Unlock()
+
+	for name := range a.StreamInfoMap {
+		if removeErr := os.Remove(a.Path + ":" + name); removeErr != nil {
+			err = errors.Join(err, removeErr)
+			continue
+		}
+
+		delete(a.StreamInfoMap, name)
+	}
+
+	return err
 }

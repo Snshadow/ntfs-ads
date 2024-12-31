@@ -7,6 +7,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+// FindFirstStreamW InfoLevel constant
 const (
 	FindStreamInfoStandard = 0
 )
