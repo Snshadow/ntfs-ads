@@ -1,4 +1,4 @@
-//go:generate go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo write_ads.json
+//go:generate goversioninfo write_ads.json
 
 //go:build windows
 // +build windows
@@ -17,21 +17,24 @@ import (
 )
 
 func main() {
-	var flagStdin, flagAppend, flagRemove bool
-	var flagSourceFile, flagTargetFile, flagADSName string
+	var flagStdin, flagAppend, flagRemove, flagRemoveAll, flagRename bool
+	var flagSourceFile, flagTargetFile, flagADSName, flagNewADSName string
 
 	flag.BoolVar(&flagStdin, "stdin", false, "read data from standard input")
 	flag.BoolVar(&flagAppend, "append", false, "append data into specified stream")
 	flag.BoolVar(&flagRemove, "remove", false, "remove specified ADS")
+	flag.BoolVar(&flagRemoveAll, "remove-all", false, "remove all ADS from specified file")
+	flag.BoolVar(&flagRename, "rename", false, "rename specified ADS")
 
 	flag.StringVar(&flagSourceFile, "source-file", "", "source file of data being written")
 	flag.StringVar(&flagTargetFile, "target-file", "", "target path for writing ADS")
 	flag.StringVar(&flagADSName, "ads-name", "", "name of the ADS to write data or remove")
+	flag.StringVar(&flagNewADSName, "new-ads-name", "", "new name for the ADS")
 
 	progName := filepath.Base(os.Args[0])
 
 	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or standard input.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name]\n or\n %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\n\n", progName, progName, progName, progName, progName)
+		fmt.Fprintf(flag.CommandLine.Output(), "%s writes data info the specified ADS(Alternate Data Stream). Can read data from file or standard input.\nUsage:\nWrite data from file: %s [target file] [source file] [ADS name]\n or\n %s -source-file [source-file] -target-file [target file] -ads-name [ADS name]\nWrite data from stdin: echo \"[data]\" | %s --stdin [target file] [ADS name]\nRemove ADS from file: %s -remove -target-file [target file] -ads-name [ADS name]\nRemove all ADS from file: %s -remove-all [target-file]\nRename ADS from file: %s -rename [target name] [ADS name] [new ADS name]\n\n", progName, progName, progName, progName, progName, progName, progName)
 
 		flag.PrintDefaults()
 
@@ -55,7 +58,7 @@ func main() {
 
 	if flagStdin {
 		src = os.Stdin
-	} else if !flagRemove {
+	} else if !flagRemove && !flagRemoveAll && !flagRename {
 		if flagSourceFile == "" {
 			if flagSourceFile = flag.Arg(1); flagSourceFile == "" {
 				flag.Usage()
@@ -71,13 +74,20 @@ func main() {
 		defer fd.Close()
 	}
 
-	if flagADSName == "" {
-		if flagStdin || flagRemove {
+	if flagADSName == "" && !flagRemoveAll {
+		if flagStdin || flagRemove || flagRename {
 			flagADSName = flag.Arg(1)
 		} else {
 			flagADSName = flag.Arg(2)
 		}
 		if flagADSName == "" {
+			flag.Usage()
+			os.Exit(1)
+		}
+	}
+
+	if flagRename && flagNewADSName == "" {
+		if flagNewADSName = flag.Arg(2); flagNewADSName == "" {
 			flag.Usage()
 			os.Exit(1)
 		}
@@ -90,6 +100,32 @@ func main() {
 			os.Exit(2)
 		}
 		fmt.Printf("Removed ADS \"%s\" from file \"%s\"\n", flagADSName, flagTargetFile)
+
+		return
+	}
+
+	if flagRemoveAll || flagRename {
+		ads, err := ntfs_ads.GetFileADS(flagTargetFile)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not ADS from file \"%s\": %v\n", flagTargetFile, err)
+			os.Exit(2)
+		}
+
+		if flagRemoveAll {
+			err = ads.RemoveAllADS()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not remove all ADS from file \"%s\": %v\n", flagTargetFile, err)
+				os.Exit(2)
+			}
+			fmt.Printf("Removed all ADS from file \"%s\"\n", flagTargetFile)
+		} else if flagRename {
+			err = ads.RenameADS(flagADSName, flagNewADSName, true)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Could not rename ADS \"%s\" to \"%s\" from file \"%s\": %v\n", flagADSName, flagNewADSName, flagTargetFile, err)
+				os.Exit(2)
+			}
+			fmt.Printf("Renamed ADS \"%s\" to \"%s\" from file \"%s\"\n", flagADSName, flagNewADSName, flagTargetFile)
+		}
 
 		return
 	}

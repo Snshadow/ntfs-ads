@@ -67,6 +67,7 @@ func NewFileRenameInfo(newName string, replace bool) ([]byte, error) {
 	}
 
 	verInfo := windows.RtlGetVersion()
+	needPadding := unsafe.Sizeof(windows.Handle(0)) == 8 // 64-bit environment has a padding to align 8 bytes
 
 	var renameInfo bytes.Buffer
 	var replaceIfExists uint32
@@ -75,10 +76,16 @@ func NewFileRenameInfo(newName string, replace bool) ([]byte, error) {
 		replaceIfExists = 1 // TRUE
 	}
 
-	if verInfo.MajorVersion < 10 || (verInfo.BuildNumber&0xffff) < 14393 { // under WIndows 10 Redstone 1
+	if verInfo.MajorVersion < 10 || (verInfo.BuildNumber&0xffff) < 14393 { // under Windows 10 Redstone 1
 		renameInfo.WriteByte(byte(replaceIfExists)) // set ReplaceIfExists BOOLEAN(bool) to true
+		if needPadding {
+			renameInfo.Write(make([]byte, 7)) // align to 8 bytes
+		}
 	} else {
 		renameInfo.Write(unsafe.Slice((*byte)(unsafe.Pointer(&replaceIfExists)), unsafe.Sizeof(replaceIfExists))) // set ReplaceIfExists DWORD(uint32) to true
+		if needPadding {
+			renameInfo.Write(make([]byte, 4)) // align to 8 bytes
+		}
 	}
 
 	rootDirectory := windows.Handle(0)

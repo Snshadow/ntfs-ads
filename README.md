@@ -16,13 +16,64 @@ import (
 func main() {
 	targetPath := "test.txt"
 
-	strmMap, err := ntfs_ads.GetFileADS(targetPath)
+	ads, err := ntfs_ads.GetFileADS(targetPath)
 	if err != nil {
 		panic(err)
 	}
 
-	for name, size := range strmMap {
+	for name, size := range ads.StreamInfoMap {
 		fmt.Printf("name: %s, size: %d\n", name, size)
+	}
+}
+```
+
+## Write, remove, rename ADS from file
+```go
+import (
+	"fmt"
+      "os"
+
+	"github.com/Snshadow/ntfs-ads"
+)
+
+func main() {
+	targetPath := "test.txt"
+
+	ads1, err := ntfs_ads.OpenFileADS(targetPath, "ads1", os.O_CREATE|os_O_WRONLY)
+	ads1.Write([]byte("test ads 1"))
+	ads1.Close()
+	ads2, err := ntfs_ads.OpenFileADS(targetPath, "ads2", os.O_CREATE|os_O_WRONLY)
+	ads2.Write([]byte("test ads 2"))
+	ads2.Close()
+	ads3, err := ntfs_ads.OpenFileADS(targetPath, "ads3", os.O_CREATE|os_O_WRONLY)
+	ads3.Write([]byte("test ads 3"))
+	ads3.Close()
+	ads4, err := ntfs_ads.OpenFileADS(targetPath, "ads4", os.O_CREATE|os_O_WRONLY)
+	ads4.Write([]byte("test ads 4"))
+	ads4.Close()
+
+	// create ADS handler for file
+	ads, err := ntfs_ads.GetFileADS(targetPath)
+	if err != nil {
+		panic(err)
+	}
+
+	// rename ADS "ads1" to "renamed1"
+	err = ads.RenameADS("ads1", "renamed1", true)
+	if err != nil {
+		panic(err)
+	}
+
+	// remove ADS "ads2"
+	err = ads.RemoveADS("ads2")
+	if err != nil {
+		panic(err)
+	}
+
+	// remove all ADS from "test.txt"
+	err = ads.RemoveAllADS()
+	if err != nil {
+		panic(err)
 	}
 }
 ```

@@ -65,7 +65,8 @@ func OpenFileADS(path string, name string, openFlag int) (*os.File, error) {
 		access = windows.FILE_READ_DATA | windows.FILE_WRITE_DATA | windows.SYNCHRONIZE
 		mode = windows.FILE_SHARE_READ | windows.FILE_SHARE_WRITE
 	case adsRename:
-		access = windows.DELETE
+		access = windows.DELETE | windows.SYNCHRONIZE
+		mode = windows.FILE_SHARE_DELETE
 	}
 
 	switch openFlag & (os.O_CREATE | os.O_TRUNC | os.O_EXCL) {
@@ -199,7 +200,7 @@ func (a *FileADS) RenameADS(oldName, newName string, overwrite bool) error {
 
 	size, ok := a.StreamInfoMap[oldName]
 	if !ok {
-		return fmt.Errorf("stream \"%s\" does not exist", oldName)
+		return fmt.Errorf("ADS \"%s\" does not exist", oldName)
 	}
 
 	hnd, err := OpenFileADS(a.Path, oldName, adsRename)
@@ -214,6 +215,10 @@ func (a *FileADS) RenameADS(oldName, newName string, overwrite bool) error {
 		return err
 	}
 
+	fmt.Println(renameInfo)
+
+
+	//TODO fix 32bit ERROR_INVALID_NAME error
 	if err = windows.SetFileInformationByHandle(
 		windows.Handle(hnd.Fd()),
 		windows.FileRenameInfo,

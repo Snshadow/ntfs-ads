@@ -1,4 +1,4 @@
-//go:generate go run github.com/josephspurrier/goversioninfo/cmd/goversioninfo query_ads.json
+//go:generate goversioninfo query_ads.json
 
 //go:build windows
 // +build windows
