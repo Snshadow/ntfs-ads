@@ -1,8 +1,8 @@
 # ntfs-ads
 Access NTFS(New Technology File System) ADS(Alternate Data Stream) using golang.
 
-This package provides access data streams in NTFS for files and directories with names(a.k.a Alternate Data Stream) which can be accessed by appending ":\[stream name\]" after file name when accessing.
-This also appiles to directories, which is normally not available with cmd with commonly known methods. Also, extracting data from alternative stream is a bit complicated with cmd.
+This package provides access data streams in NTFS for files and directories with names(a.k.a Alternate Data Stream) which can be accessed by appending ":\[stream name\]" after file name.
+This also appiles to directories and reparse points, which is normally not available with cmd with commonly known methods. Also, extracting data from alternative stream is a bit complicated with cmd.
 
 ## Query ADS from file
 _Query name and size of ADS from file_
@@ -31,7 +31,7 @@ func main() {
 ```go
 import (
 	"fmt"
-      "os"
+	"os"
 
 	"github.com/Snshadow/ntfs-ads"
 )
@@ -104,18 +104,28 @@ Write ADS content to stdout(for piping output): query-ads.exe -filename [filenam
 ```
 
 ```
-write-ads.exe writes data info the specified ADS(Alternate Data Stream). Can read data from file or stdin.
+write_ads.exe writes data info the specified ADS(Alternate Data Stream). Can read data from file or standard input.
 Usage:
-Write data from file: write-ads.exe [target file] [source file] [ADS name] or write-ads.exe -source-file [source-file] -target-file [target file] -ads-name [ADS name]
-Write data from stdin: echo "[data]" | write-ads.exe --stdin [target file] [ADS name]
-Remove ADS from file: write-ads.exe -remove -target-file [target file] -ads-name [ADS name]
+Write data from file: write_ads.exe [target file] [source file] [ADS name]
+ or
+ write_ads.exe -source-file [source-file] -target-file [target file] -ads-name [ADS name]
+Write data from stdin: echo "[data]" | write_ads.exe --stdin [target file] [ADS name]
+Remove ADS from file: write_ads.exe -remove -target-file [target file] -ads-name [ADS name]
+Remove all ADS from file: write_ads.exe -remove-all [target-file]
+Rename ADS from file: write_ads.exe -rename [target name] [ADS name] [new ADS name]
 
   -ads-name string
         name of the ADS to write data or remove
   -append
         append data into specified stream
+  -new-ads-name string
+        new name for the ADS
   -remove
         remove specified ADS
+  -remove-all
+        remove all ADS from specified file
+  -rename
+        rename specified ADS
   -source-file string
         source file of data being written
   -stdin
