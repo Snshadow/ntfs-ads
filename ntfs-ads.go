@@ -215,9 +215,6 @@ func (a *FileADS) RenameADS(oldName, newName string, overwrite bool) error {
 		return err
 	}
 
-	fmt.Println(renameInfo)
-
-
 	//TODO fix 32bit ERROR_INVALID_NAME error
 	if err = windows.SetFileInformationByHandle(
 		windows.Handle(hnd.Fd()),

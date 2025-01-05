@@ -86,7 +86,12 @@ func NewFileRenameInfo(newName string, replace bool) ([]byte, error) {
 		return nil, err
 	}
 
-	var fileNameLength uint32 = uint32((len(u16Name) - 1) * 2) // length in bytes without NUL-terminaton
+	// max length = 257(1(":") + 255(max ads name length) + 1(NULL termination))
+	if len(u16Name) > 257 {
+		return nil, fmt.Errorf("the length of new name exceeds max length(255)")
+	}
+
+	var fileNameLength uint32 = uint32((len(u16Name) - 1) * 2) // length in bytes without NULL terminaton
 
 	renameInfo.Write(unsafe.Slice((*byte)(unsafe.Pointer(&fileNameLength)), unsafe.Sizeof(fileNameLength))) // FileNameLength DWORD(uint32)
 	renameInfo.Write(unsafe.Slice((*byte)(unsafe.Pointer(&u16Name[0])), len(u16Name)*2)) // FileName []uint16(WCHAR[])
